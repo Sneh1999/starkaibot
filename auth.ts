@@ -1,45 +1,59 @@
 import NextAuth from 'next-auth'
-import Credentials from 'next-auth/providers/credentials'
-import { authConfig } from './auth.config'
-import { z } from 'zod'
-import { getStringFromBuffer } from './lib/utils'
-import { getUser } from './app/login/actions'
 
-export const { auth, signIn, signOut } = NextAuth({
-  ...authConfig,
+import type { NextAuthConfig } from 'next-auth'
+
+import Credentials from 'next-auth/providers/credentials'
+import { validateJWT } from './lib/authHelpers'
+
+type User = {
+  id: string
+  name: string
+  email: string
+  // Add other fields as needed
+}
+
+export const config = {
+  theme: {
+    logo: 'https://next-auth.js.org/img/logo/logo-sm.png'
+  },
   providers: [
     Credentials({
-      async authorize(credentials) {
-        const parsedCredentials = z
-          .object({
-            email: z.string().email(),
-            password: z.string().min(6)
-          })
-          .safeParse(credentials)
-
-        if (parsedCredentials.success) {
-          const { email, password } = parsedCredentials.data
-          const user = await getUser(email)
-
-          if (!user) return null
-
-          const encoder = new TextEncoder()
-          const saltedPassword = encoder.encode(password + user.salt)
-          const hashedPasswordBuffer = await crypto.subtle.digest(
-            'SHA-256',
-            saltedPassword
-          )
-          const hashedPassword = getStringFromBuffer(hashedPasswordBuffer)
-
-          if (hashedPassword === user.password) {
-            return user
-          } else {
-            return null
-          }
+      name: 'Credentials',
+      credentials: {
+        token: { label: 'Token', type: 'text' }
+      },
+      async authorize(
+        credentials: Partial<Record<'token', unknown>>,
+        request: Request
+      ): Promise<User | null> {
+        const token = credentials.token as string // Safely cast to string; ensure to handle undefined case
+        if (typeof token !== 'string' || !token) {
+          throw new Error('Token is required')
         }
+        const jwtPayload = await validateJWT(token)
 
-        return null
+        if (jwtPayload) {
+          // Transform the JWT payload into your user object
+          const user: User = {
+            id: jwtPayload.sub || '', // Assuming 'sub' is the user ID
+            name: jwtPayload.name || '', // Replace with actual field from JWT payload
+            email: jwtPayload.email || '' // Replace with actual field from JWT payload
+            // Map other fields as needed
+          }
+          return user
+        } else {
+          return null
+        }
       }
     })
-  ]
-})
+  ],
+  callbacks: {
+    authorized({ request, auth }) {
+      const { pathname } = request.nextUrl
+      if (pathname === '/middleware-example') return !!auth
+      return true
+    }
+  }
+} satisfies NextAuthConfig
+
+export const { handlers, auth, signIn, signOut } = NextAuth(config)
