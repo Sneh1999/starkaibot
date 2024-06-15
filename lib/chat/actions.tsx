@@ -37,7 +37,7 @@ import { Chat, Message } from '@/lib/types'
 import { auth } from '@/auth'
 
 async function confirmPurchase(symbol: string, price: number, amount: number) {
-  'use server'
+  'use client'
 
   const aiState = getMutableAIState<typeof AI>()
 

@@ -1,4 +1,4 @@
-'use server'
+'use client'
 
 import { signIn } from '@/auth'
 import { User } from '@/lib/types'
