@@ -37,7 +37,7 @@ import { Chat, Message } from '@/lib/types'
 import { auth } from '@/auth'
 
 async function confirmPurchase(symbol: string, price: number, amount: number) {
-  'use client'
+  'use server'
 
   const aiState = getMutableAIState<typeof AI>()
 
@@ -107,7 +107,7 @@ async function confirmPurchase(symbol: string, price: number, amount: number) {
 }
 
 async function submitUserMessage(content: string) {
-  'use client'
+  'use server'
 
   const aiState = getMutableAIState<typeof AI>()
 
@@ -501,7 +501,7 @@ export const AI = createAI<AIState, UIState>({
   initialUIState: [],
   initialAIState: { chatId: nanoid(), messages: [] },
   onGetUIState: async () => {
-    'use client'
+    'use server'
 
     const session = await auth()
 
@@ -517,7 +517,7 @@ export const AI = createAI<AIState, UIState>({
     }
   },
   onSetAIState: async ({ state }) => {
-    'use client'
+    'use server'
 
     const session = await auth()
 
