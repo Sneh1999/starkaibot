@@ -1,4 +1,4 @@
-'use server'
+'use client'
 
 import { signIn } from '@/auth'
 import { ResultCode, getStringFromBuffer } from '@/lib/utils'

@@ -38,7 +38,7 @@ export function UserMenu({ user }: UserMenuProps) {
           <DropdownMenuSeparator />
           <form
             action={async () => {
-              'use server'
+              'use client'
               await signOut()
             }}
           >

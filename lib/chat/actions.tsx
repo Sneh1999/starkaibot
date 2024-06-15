@@ -107,7 +107,7 @@ async function confirmPurchase(symbol: string, price: number, amount: number) {
 }
 
 async function submitUserMessage(content: string) {
-  'use server'
+  'use client'
 
   const aiState = getMutableAIState<typeof AI>()
 
@@ -501,7 +501,7 @@ export const AI = createAI<AIState, UIState>({
   initialUIState: [],
   initialAIState: { chatId: nanoid(), messages: [] },
   onGetUIState: async () => {
-    'use server'
+    'use client'
 
     const session = await auth()
 
@@ -517,7 +517,7 @@ export const AI = createAI<AIState, UIState>({
     }
   },
   onSetAIState: async ({ state }) => {
-    'use server'
+    'use client'
 
     const session = await auth()
 
