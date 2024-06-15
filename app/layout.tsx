@@ -7,6 +7,8 @@ import { TailwindIndicator } from '@/components/tailwind-indicator'
 import { Providers } from '@/components/providers'
 import { Header } from '@/components/header'
 import { Toaster } from '@/components/ui/sonner'
+import { DynamicContextProvider } from '@dynamic-labs/sdk-react-core'
+import { StarknetWalletConnectors } from '@dynamic-labs/starknet'
 
 export const metadata = {
   metadataBase: process.env.VERCEL_URL
@@ -38,27 +40,37 @@ interface RootLayoutProps {
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={cn(
-          'font-sans antialiased',
-          GeistSans.variable,
-          GeistMono.variable
-        )}
+      <DynamicContextProvider
+        settings={{
+          environmentId: 'da8ca208-a4ea-41d2-ba4e-7a5465e611b2',
+
+          walletConnectors: [StarknetWalletConnectors]
+        }}
       >
-        <Toaster position="top-center" />
-        <Providers
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
+        <body
+          className={cn(
+            'font-sans antialiased',
+            GeistSans.variable,
+            GeistMono.variable
+          )}
         >
-          <div className="flex flex-col min-h-screen">
-            <Header />
-            <main className="flex flex-col flex-1 bg-muted/50">{children}</main>
-          </div>
-          <TailwindIndicator />
-        </Providers>
-      </body>
+          <Toaster position="top-center" />
+          <Providers
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <div className="flex flex-col min-h-screen">
+              <Header />
+              <main className="flex flex-col flex-1 bg-muted/50">
+                {children}
+              </main>
+            </div>
+            <TailwindIndicator />
+          </Providers>
+        </body>
+      </DynamicContextProvider>
     </html>
   )
 }
