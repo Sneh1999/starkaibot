@@ -6,7 +6,7 @@ import { ChatList } from '@/components/chat-list'
 import { AI, UIState, getUIStateFromAIState } from '@/lib/chat/actions'
 import { formatDate } from '@/lib/utils'
 
-export const runtime = 'edge'
+// export const runtime = 'edge'
 export const preferredRegion = 'home'
 
 interface SharePageProps {
