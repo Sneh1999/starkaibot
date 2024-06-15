@@ -16,6 +16,7 @@ export const config = {
   theme: {
     logo: 'https://next-auth.js.org/img/logo/logo-sm.png'
   },
+
   providers: [
     Credentials({
       name: 'Credentials',
@@ -52,6 +53,23 @@ export const config = {
       const { pathname } = request.nextUrl
       if (pathname === '/middleware-example') return !!auth
       return true
+    },
+    async jwt({ token, user }) {
+      if (user) {
+        token = { ...token, id: user.id }
+      }
+
+      return token
+    },
+    async session({ session, token }) {
+      if (token) {
+        const { id } = token as { id: string }
+        const { user } = session
+
+        session = { ...session, user: { ...user, id } }
+      }
+
+      return session
     }
   }
 } satisfies NextAuthConfig

@@ -5,10 +5,9 @@ import { ThemeProvider as NextThemesProvider } from 'next-themes'
 import { ThemeProviderProps } from 'next-themes/dist/types'
 import { SidebarProvider } from '@/lib/hooks/use-sidebar'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import getCsrfToken from 'next-auth'
+import { getCsrfToken } from 'next-auth/react'
 import { DynamicContextProvider } from '@dynamic-labs/sdk-react-core'
 import { StarknetWalletConnectors } from '@dynamic-labs/starknet'
-import { config } from 'auth'
 export function Providers({ children, ...props }: ThemeProviderProps) {
   return (
     <DynamicContextProvider
@@ -19,7 +18,7 @@ export function Providers({ children, ...props }: ThemeProviderProps) {
           onAuthSuccess: async event => {
             const { authToken } = event
 
-            const csrfToken = await getCsrfToken(config)
+            const csrfToken = await getCsrfToken()
 
             fetch('/api/auth/callback/credentials', {
               method: 'POST',
@@ -27,7 +26,7 @@ export function Providers({ children, ...props }: ThemeProviderProps) {
                 'Content-Type': 'application/x-www-form-urlencoded'
               },
               body: `csrfToken=${encodeURIComponent(
-                csrfToken as any
+                csrfToken as string
               )}&token=${encodeURIComponent(authToken)}`
             })
               .then(res => {
