@@ -13,7 +13,6 @@ export function Providers({ children, ...props }: ThemeProviderProps) {
     <DynamicContextProvider
       settings={{
         environmentId: 'da8ca208-a4ea-41d2-ba4e-7a5465e611b2',
-
         walletConnectors: [StarknetWalletConnectors]
       }}
     >
