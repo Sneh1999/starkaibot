@@ -30,6 +30,7 @@ import {
   sleep
 } from '@/lib/utils'
 import { z } from 'zod'
+import { getTokenAddress } from '../starknet/voyager'
 
 async function confirmPurchase(symbol: string, price: number, amount: number) {
   'use server'
@@ -103,7 +104,7 @@ async function confirmPurchase(symbol: string, price: number, amount: number) {
 
 async function submitUserMessage(content: string) {
   'use server'
-
+  console.log('submitUserMessage', content)
   const aiState = getMutableAIState<typeof AI>()
 
   aiState.update({
@@ -118,6 +119,8 @@ async function submitUserMessage(content: string) {
     ]
   })
 
+  console.log('bp-1')
+  console.log(process.env.OPENAI_API_KEY)
   let textStream: undefined | ReturnType<typeof createStreamableValue<string>>
   let textNode: undefined | React.ReactNode
 
@@ -127,7 +130,7 @@ async function submitUserMessage(content: string) {
     system: `\
     You are a decentralized finance bot and you can help users to check their balance of a token, transfer tokens or swap tokens step by step.
         
-    If the user requests swap token X for Y, call \`swap_tokens\` to swap tokens.    
+    If the user requests to send some token X to recipient Y for amount Z, call \`transferToken\` to transfer token to another address.    
     Besides that, you can also chat with users and do some calculations if needed.`,
     messages: [
       ...aiState.get().messages.map((message: any) => ({
@@ -137,11 +140,14 @@ async function submitUserMessage(content: string) {
       }))
     ],
     text: ({ content, done, delta }) => {
+      console.log('bp-3')
       if (!textStream) {
         textStream = createStreamableValue('')
         textNode = <BotMessage content={textStream.value} />
       }
-
+      console.log('content', content)
+      console.log('done', done)
+      console.log('delta', delta)
       if (done) {
         textStream.done()
         aiState.done({
@@ -162,29 +168,100 @@ async function submitUserMessage(content: string) {
       return textNode
     },
     tools: {
-      swapTokens: {
+      // swapTokens: {
+      //   description:
+      //     'Swap one token for another. Use this if the user wants to swap tokens.',
+      //   parameters: z.object({
+      //     tokenFrom: z
+      //       .string()
+      //       .describe(
+      //         'The symbol of the token that will be swapped to convert to another token. e.g. USDC/STRK/ETH.'
+      //       ),
+      //     tokenTo: z
+      //       .string()
+      //       .describe(
+      //         'The symbol of the token that the tokenFrom will be swapped into. e.g. USDC/STRK/ETH.'
+      //       )
+      //   }),
+      //   generate: async function* ({ tokenFrom, tokenTo }) {
+      //     yield (
+      //       <BotCard>
+      //         <SwapSkeleton />
+      //       </BotCard>
+      //     )
+
+      //     await sleep(1000)
+
+      //     const toolCallId = nanoid()
+
+      //     aiState.done({
+      //       ...aiState.get(),
+      //       messages: [
+      //         ...aiState.get().messages,
+      //         {
+      //           id: nanoid(),
+      //           role: 'assistant',
+      //           content: [
+      //             {
+      //               type: 'tool-call',
+      //               toolName: 'swapTokens',
+      //               toolCallId,
+      //               args: { tokenFrom, tokenTo }
+      //             }
+      //           ]
+      //         },
+      //         {
+      //           id: nanoid(),
+      //           role: 'tool',
+      //           content: [
+      //             {
+      //               type: 'tool-result',
+      //               toolName: 'swapTokens',
+      //               toolCallId,
+      //               result: { tokenFrom, tokenTo }
+      //             }
+      //           ]
+      //         }
+      //       ]
+      //     })
+
+      //     return (
+      //       <BotCard>
+      //         <Swap props={{ tokenFrom, tokenTo }} />
+      //       </BotCard>
+      //     )
+      //   }
+      // },
+      transferToken: {
         description:
-          'Swap one token for another. Use this if the user wants to swap tokens.',
+          'Transfer token X to recipient Y for amount Z. Use this if the user wants to transfer some token to another address.',
         parameters: z.object({
-          tokenFrom: z
+          tokenName: z
             .string()
             .describe(
-              'The symbol of the token that will be swapped to convert to another token. e.g. USDC/STRK/ETH.'
+              'The name of the token that will be swapped to convert to another token. e.g. USDC/STRK/ETH.'
             ),
-          tokenTo: z
+          recipient: z
             .string()
+            .startsWith('0x')
             .describe(
-              'The symbol of the token that the tokenFrom will be swapped into. e.g. USDC/STRK/ETH.'
+              'The address of the recipient that will receive the token. e.g. 0x06D58289eD6F44C645c2A0286E4f5A36D8b46fe2A7a4f8093bA48191158d4508'
+            ),
+          amount: z
+            .number()
+            .positive()
+            .describe(
+              'The amount of the token that will be transferred to the recipient. e.g. 100'
             )
         }),
-        generate: async function* ({ tokenFrom, tokenTo }) {
+        generate: async function* ({ tokenName, recipient, amount }) {
+          console.log('bp-2')
           yield (
             <BotCard>
               <SwapSkeleton />
             </BotCard>
           )
-
-          await sleep(1000)
+          const tokenAddress = await getTokenAddress(tokenName)
 
           const toolCallId = nanoid()
 
@@ -198,9 +275,9 @@ async function submitUserMessage(content: string) {
                 content: [
                   {
                     type: 'tool-call',
-                    toolName: 'swapTokens',
+                    toolName: 'transferToken',
                     toolCallId,
-                    args: { tokenFrom, tokenTo }
+                    args: { tokenName, recipient, amount }
                   }
                 ]
               },
@@ -210,9 +287,9 @@ async function submitUserMessage(content: string) {
                 content: [
                   {
                     type: 'tool-result',
-                    toolName: 'swapTokens',
+                    toolName: 'transferToken',
                     toolCallId,
-                    result: { tokenFrom, tokenTo }
+                    result: { tokenAddress, recipient, amount }
                   }
                 ]
               }
@@ -221,7 +298,10 @@ async function submitUserMessage(content: string) {
 
           return (
             <BotCard>
-              <Swap props={{ tokenFrom, tokenTo }} />
+              {/* <Swap props={{ tokenAddress, recipient, amount }} /> */}
+              <p>
+                Transferring {amount} {tokenAddress} to {recipient}...
+              </p>
             </BotCard>
           )
         }
