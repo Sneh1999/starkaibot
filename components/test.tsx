@@ -4,12 +4,12 @@ import { Button } from './ui/button'
 import { useStarknet } from '@/lib/hooks/use-starknet'
 
 export function Test() {
-  const { transferToken } = useStarknet()
+  const { transfer, swap } = useStarknet()
 
   return (
     <Button
       onClick={() => {
-        void transferToken({
+        void transfer({
           tokenName: 'Ether',
           amount: 100000,
           recipient:
