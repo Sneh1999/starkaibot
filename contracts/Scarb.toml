@@ -1,0 +1,12 @@
+[package]
+name = "contracts"
+version = "0.1.0"
+edition = "2023_11"
+cairo-version = "2.6.3"
+
+# See more keys and their definitions at https://docs.swmansion.com/scarb/docs/reference/manifest.html
+
+[dependencies]
+starknet = "=2.6.3"
+openzeppelin = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v0.11.0" }
+ekubo = { git = "https://github.com/EkuboProtocol/abis" }
