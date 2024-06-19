@@ -15,7 +15,6 @@ export const validateJWT = async (
           err: VerifyErrors | null,
           decoded: string | JwtPayload | undefined
         ) => {
-          console.log('decoded the jwt')
           if (err) {
             reject(err)
           } else {
@@ -42,8 +41,6 @@ export const getKey = (
   _headers: any,
   callback: (err: Error | null, key?: Secret) => void
 ): void => {
-  console.log('calling getKey')
-
   // Define the options for the fetch request
   const options = {
     method: 'GET',

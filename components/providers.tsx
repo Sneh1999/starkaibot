@@ -30,7 +30,6 @@ export function Providers({ children, ...props }: ThemeProviderProps) {
               )}&token=${encodeURIComponent(authToken)}`
             })
               .then(res => {
-                console.log('RESPONSE', res)
                 if (res.ok) {
                   console.log('LOGGED IN', res)
                   // Handle success - maybe redirect to the home page or user dashboard

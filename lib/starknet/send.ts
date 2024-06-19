@@ -1,7 +1,7 @@
 import { Wallet } from '@dynamic-labs/sdk-react-core'
 import StarknetWalletConnector from '@dynamic-labs/starknet/src/starknetWalletConnector'
 import { Contract } from 'starknet'
-import { getTokenAddress } from './voyager'
+import { getToken } from './voyager'
 
 export interface SendTokenArgs {
   wallet: Wallet | null
@@ -25,9 +25,10 @@ export async function sendToken({
   const signer = await starknetConnector.getSigner()
   if (!signer) throw new Error('No signer found')
 
-  const tokenAddress = await getTokenAddress(tokenName)
-  console.log('tokenAddress', tokenAddress)
-  if (!tokenAddress) throw new Error('Token address not found')
+  const token = await getToken(tokenName)
+  if (!token) throw new Error('Token  not found')
+
+  const tokenAddress = token.address
   const contractClass = await provider.getClassAt(tokenAddress)
   if (!contractClass) throw new Error('Token class not found')
 
