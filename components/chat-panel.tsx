@@ -65,7 +65,6 @@ export function ChatPanel({
                       display: <UserMessage>{example.message}</UserMessage>
                     }
                   ])
-
                   const responseMessage = await submitUserMessage(
                     example.message
                   )

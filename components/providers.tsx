@@ -5,7 +5,7 @@ import { ThemeProvider as NextThemesProvider } from 'next-themes'
 import { ThemeProviderProps } from 'next-themes/dist/types'
 import { SidebarProvider } from '@/lib/hooks/use-sidebar'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { getCsrfToken } from 'next-auth/react'
+import { getCsrfToken, signIn, signOut } from 'next-auth/react'
 import { DynamicContextProvider } from '@dynamic-labs/sdk-react-core'
 import { StarknetWalletConnectors } from '@dynamic-labs/starknet'
 export function Providers({ children, ...props }: ThemeProviderProps) {
@@ -16,32 +16,13 @@ export function Providers({ children, ...props }: ThemeProviderProps) {
         walletConnectors: [StarknetWalletConnectors],
         events: {
           onAuthSuccess: async event => {
-            const { authToken } = event
-
-            const csrfToken = await getCsrfToken()
-
-            fetch('/api/auth/callback/credentials', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-              },
-              body: `csrfToken=${encodeURIComponent(
-                csrfToken as string
-              )}&token=${encodeURIComponent(authToken)}`
+            await signIn('credentials', {
+              token: encodeURIComponent(event.authToken)
             })
-              .then(res => {
-                if (res.ok) {
-                  console.log('LOGGED IN', res)
-                  // Handle success - maybe redirect to the home page or user dashboard
-                } else {
-                  // Handle any errors - maybe show an error message to the user
-                  console.error('Failed to log in')
-                }
-              })
-              .catch(error => {
-                // Handle any exceptions
-                console.error('Error logging in', error)
-              })
+          },
+          onLogout: async event => {
+            console.log('LOGOUT', event)
+            await signOut({})
           }
         }
       }}

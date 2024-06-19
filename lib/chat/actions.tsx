@@ -31,6 +31,7 @@ import {
 } from '@/lib/utils'
 import { z } from 'zod'
 import { getToken } from '../starknet/voyager'
+import { Session } from 'next-auth'
 
 async function confirmPurchase(symbol: string, price: number, amount: number) {
   'use server'
@@ -104,6 +105,15 @@ async function confirmPurchase(symbol: string, price: number, amount: number) {
 
 async function submitUserMessage(content: string) {
   'use server'
+
+  const session = (await auth()) as Session
+
+  if (!session) {
+    return {
+      id: nanoid(),
+      display: <p>Please logged in to continue</p>
+    }
+  }
   const aiState = getMutableAIState<typeof AI>()
 
   aiState.update({
