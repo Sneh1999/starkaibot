@@ -39,7 +39,7 @@ export const validateJWT = async (
 // app/lib/authHelpers.ts
 
 export const getKey = (
-  headers,
+  _headers: any,
   callback: (err: Error | null, key?: Secret) => void
 ): void => {
   console.log('calling getKey')
