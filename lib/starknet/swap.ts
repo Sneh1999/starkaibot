@@ -1,11 +1,14 @@
 import { Wallet } from '@dynamic-labs/sdk-react-core'
 import StarknetWalletConnector from '@dynamic-labs/starknet/src/starknetWalletConnector'
-import { Call, Contract, num } from 'starknet'
+import { Call, num } from 'starknet'
+import StarkbotABI from './abis/starkbot-token.json'
 
-import EKUBO_ROUTER_ABI from './abis/ekubo-router.json'
+import {
+  getStarkBotSwapCall,
+  getStarkBotTokenApprovalCall,
+  hasFeeBalance
+} from './utils'
 
-const EKUBO_ROUTER_ADDRESS =
-  '0x0045f933adf0607292468ad1c1dedaa74d5ad166392590e72676a34d01d7b763'
 const EKUBO_API_QUOTE_URL = 'https://sepolia-api.ekubo.org/quote'
 
 export interface SwapTokensArgs {
@@ -14,6 +17,8 @@ export interface SwapTokensArgs {
   outputTokenAddress: string
   amount: bigint
 }
+
+const SWAP_FEES = BigInt(500) * BigInt(10 ** 18)
 
 export async function swapTokens({
   wallet,
@@ -30,37 +35,34 @@ export async function swapTokens({
   const signer = await starknetConnector.getSigner()
   if (!signer) throw new Error('No signer found')
 
-  const ekuboRouter = new Contract(
-    EKUBO_ROUTER_ABI,
-    EKUBO_ROUTER_ADDRESS,
-    signer
-  )
+  const hasFees = await hasFeeBalance({
+    requiredFee: SWAP_FEES,
+    address: wallet.address
+  })
+  if (!hasFees) throw new Error('Insufficient fees')
 
   const route = await fetchRoute(inputTokenAddress, outputTokenAddress, amount)
 
-  console.log({ route })
+  const zeroForOne =
+    num.cleanHex(route.route[0].pool_key.token0) ===
+    num.cleanHex(inputTokenAddress)
+
+  console.log({
+    inputTokenAddress,
+    outputTokenAddress,
+    route
+  })
   const calls: Call[] = [
-    // First call transfers the input token to the router
-    {
-      contractAddress: inputTokenAddress,
-      entrypoint: 'transfer',
-      calldata: [EKUBO_ROUTER_ADDRESS, num.toHex(amount), '0x0']
-    },
-    // Then the route
-    {
-      contractAddress: EKUBO_ROUTER_ADDRESS,
-      entrypoint: 'multihop_swap',
-      calldata: ekuboRouter.populate('multihop_swap', [
-        route.route,
-        {
-          token: inputTokenAddress
-        }
-      ])
-    }
+    // First call transfers the input token to the starkbot contract
+    getStarkBotTokenApprovalCall({ amount, tokenAddress: inputTokenAddress }),
+    // Then calls the swap function on the starkbot contract
+    // NOTE: We only support single-hop swaps for now
+    getStarkBotSwapCall(route, zeroForOne)
   ]
 
-  const { transaction_hash: txnHash } = await signer.execute(calls)
-  console.log(txnHash)
+  const { transaction_hash: txnHash } = await signer.execute(calls, [
+    StarkbotABI
+  ])
   return txnHash
 }
 
@@ -70,7 +72,7 @@ async function fetchRoute(
   amount: BigInt
 ) {
   const quote = await fetch(
-    `${EKUBO_API_QUOTE_URL}/${amount}/${inputTokenAddress}/${outputTokenAddress}?maxHops=3`
+    `${EKUBO_API_QUOTE_URL}/${amount}/${inputTokenAddress}/${outputTokenAddress}?maxHops=1`
   )
 
   if (!quote.ok) {

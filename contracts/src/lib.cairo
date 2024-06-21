@@ -1,10 +1,13 @@
 #[starknet::contract]
 mod StarkBot {
+    use openzeppelin::token::erc20::erc20::ERC20Component::InternalTrait;
+    use core::option::OptionTrait;
+    use core::traits::TryInto;
+    use openzeppelin::access::ownable::interface::OwnableABI;
     use ekubo::components::clear::IClear;
     use core::traits::Into;
     use ekubo::types::i129::i129Trait;
     use ekubo::interfaces::core::ICoreDispatcherTrait;
-    use openzeppelin::access::ownable::ownable::OwnableComponent::InternalTrait;
     use openzeppelin::token::erc20::ERC20Component;
     use openzeppelin::access::ownable::OwnableComponent;
 
@@ -73,13 +76,15 @@ mod StarkBot {
     }
 
     #[constructor]
-    fn constructor(ref self: ContractState, owner: ContractAddress) {
+    fn constructor(ref self: ContractState, owner: ContractAddress, ekubo_core: ContractAddress) {
         let name = "StarkBot";
         let symbol = "STRKBOT";
 
         self.ownable.initializer(owner);
-
         self.erc20.initializer(name, symbol);
+        self.core.write(ICoreDispatcher { contract_address: ekubo_core });
+
+        self.erc20._mint(owner, 100000000000000000000000000);
     }
 
     // Initiate a swap through Ekubo, with STARKBOT fees charged
@@ -132,6 +137,17 @@ mod StarkBot {
     #[external(v0)]
     fn withdraw(ref self: ContractState, amount: u256) {
         self.ownable.assert_only_owner();
-        self.erc20.transfer(get_caller_address(), amount);
+        self.erc20.transfer(self.owner(), amount);
+    }
+
+    // Read-only functions
+    #[external(v0)]
+    fn owner(self: ContractState) -> ContractAddress {
+        self.ownable.owner()
+    }
+
+    #[external(v0)]
+    fn core_dispatcher(self: ContractState) -> ContractAddress {
+        self.core.read().contract_address
     }
 }
