@@ -1,5 +1,6 @@
 'use client'
 
+import { getTransactionSimulation } from '@/lib/starknet/nethermind'
 import { Button } from './ui/button'
 import { useStarknet } from '@/lib/hooks/use-starknet'
 
@@ -36,6 +37,17 @@ export function Test() {
         }}
       >
         Swap 0.0001 ETH for STRK
+      </Button>
+
+      <Button
+        onClick={() => {
+          void getTransactionSimulation({
+            transactionHash:
+              '0x07aeb396a19f724020684b456fe34680c60f487414185007f71c2a996966ba12'
+          })
+        }}
+      >
+        Get Transaction Simulation
       </Button>
     </div>
   )

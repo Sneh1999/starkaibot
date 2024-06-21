@@ -11,7 +11,6 @@ export const getTokens = async () => {
       }
     )
     const data = await response.json()
-    console.log(data)
     return data.items
   } catch (e) {
     console.log(e)
@@ -19,13 +18,13 @@ export const getTokens = async () => {
   }
 }
 
-export const getTokenAddress = async (tokenName: string) => {
+export const getToken = async (tokenName: string) => {
   const tokens = await getTokens()
-  console.log('tokenname', tokenName)
   const token = tokens.find(
     (t: { name: string; symbol: string }) =>
       t.name.toLowerCase() === tokenName.toLowerCase() ||
       t.symbol.toLowerCase() === tokenName.toLowerCase()
   )
-  return token?.address
+
+  return token
 }
