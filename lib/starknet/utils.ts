@@ -3,9 +3,9 @@ import StarkbotABI from './abis/starkbot-token.json'
 import { ApiQuoteSwap } from './swap'
 
 const STARKBOT_TOKEN_CLASS_HASH =
-  '0x001f42e9ecb8fe6dc58bdafc9052800db720ab60e82340376b945d4e1560028a'
+  '0x027a3e8664d9e5989e7a853e15399dc69987d029540f8d33a5e2d37643fb7744'
 export const STARKBOT_TOKEN_CONTRACT_ADDRESS =
-  '0x024c01e58dc3693bcddba981caf1dcf804e40d8c14bb2b579a275d09048bc62b'
+  '0x06b530a5c8f3af4a5ba7be66b3a59b6b94aaf5d9794baac75d85fc49d5bf174f'
 
 export async function getFeeBalance(address: string) {
   const provider = new RpcProvider({
@@ -66,7 +66,7 @@ export function getStarkBotSwapCall(quote: ApiQuoteSwap, zeroForOne: boolean) {
     provider
   )
 
-  console.log({ amount: quote.amount, specifiedAmount: quote.specifiedAmount })
+  console.log({ quote })
   const call: Call = contract.populate('swap', [
     {
       pool_key: {

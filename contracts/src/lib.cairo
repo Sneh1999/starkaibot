@@ -12,6 +12,7 @@ mod StarkBot {
     use openzeppelin::access::ownable::OwnableComponent;
 
     use ekubo::interfaces::core::{ICoreDispatcher, ILocker, SwapParameters};
+    use ekubo::interfaces::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use ekubo::types::keys::{PoolKey};
     use ekubo::types::i129::{i129};
     use ekubo::types::delta::{Delta};
@@ -92,8 +93,19 @@ mod StarkBot {
     fn swap(ref self: ContractState, swap_data: SwapData) -> SwapResult {
         let balance = self.erc20.balance_of(get_caller_address());
         assert(balance > SWAP_FEE, 'Insufficient balance');
-
         self.erc20._transfer(get_caller_address(), get_contract_address(), SWAP_FEE);
+
+        let input_token_address = if swap_data.params.is_token1 {
+            swap_data.pool_key.token1
+        } else {
+            swap_data.pool_key.token0
+        };
+
+        let input_token = IERC20Dispatcher { contract_address: input_token_address };
+        input_token
+            .transferFrom(
+                get_caller_address(), get_contract_address(), swap_data.params.amount.mag.into()
+            );
 
         call_core_with_callback(
             self.core.read(), @CallbackData { swap_data, recipient: get_caller_address() }
@@ -142,12 +154,12 @@ mod StarkBot {
 
     // Read-only functions
     #[external(v0)]
-    fn owner(self: ContractState) -> ContractAddress {
+    fn owner(self: @ContractState) -> ContractAddress {
         self.ownable.owner()
     }
 
     #[external(v0)]
-    fn core_dispatcher(self: ContractState) -> ContractAddress {
+    fn core_dispatcher(self: @ContractState) -> ContractAddress {
         self.core.read().contract_address
     }
 }
