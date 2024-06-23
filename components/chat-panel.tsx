@@ -35,9 +35,20 @@ export function ChatPanel({
 
   const exampleMessages = [
     {
-      heading: 'Swap ETH for STRK',
+      heading: 'Swap 0.001 ETH for STRK',
       subheading: 'Swap ETH for STRK token',
-      message: `Can you swap ETH for STRK token?`
+      message: `Can you swap 0.001 ETH for STRK token?`
+    },
+    {
+      heading: 'Balance of ETH',
+      subheading: 'Check your balance of any token',
+      message: 'What is my ETH balance?'
+    },
+    {
+      heading: 'Transfer STRK',
+      subheading: 'Transfer tokens to another address',
+      message:
+        'Send 2 STRK to 0x072afB63Cb5C2b7B2Cd4958408Ca9BDF7ef4f1eb7162E132c10143Ce311549D2'
     }
   ]
 

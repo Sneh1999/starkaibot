@@ -2,6 +2,10 @@
 
 StarkBot is an AI powered DeFi chatbot to conduct activities on StarkNet.
 
+## Description
+
+Transacting in crypto is hard - gas fees, block explorers, swap routes, slippage, and more cause too much technical jargon. We see AI x Crypto as an intersection that can make this much simpler. StarkBot is an AI powered DeFi chatbot that takes a first step towards solving these problems and making crypto more accessible to everyone by enabling an easy to use approach to being onchain.
+
 ## Core Features
 
 - Fetch token balances of connected wallet
@@ -25,6 +29,24 @@ StarkBot is an AI powered DeFi chatbot to conduct activities on StarkNet.
 5. User confirms the action, which triggers an onchain transaction (for transfer/swap)
 
 > NOTE: If testing during judging, you will need `STRKBOT` token for executing swaps. You can mint STRKBOT token for free for now by calling the `mint` function on the contract here - https://sepolia.voyager.online/contract/0x05ab9c6b81f1d1a7aac290940584a9d26c49ac1014097ef3bf11710445ebf285#writeContract
+
+## Technologies
+
+1. Next.js - Frontend and Backend
+2. OpenAI - LLM Model for parsing user requests
+3. Vercel AI SDK - Generative UI for displaying action details
+4. Dynamic Widget - Login with StarkNet
+5. Argent X - Wallet used
+6. Cairo / Scarb / Starkli - Contracts
+7. Voyager API - Token information based on name/symbol
+8. Ekubo Protocol - DEX Integration
+9. Nethermind - Txn Simulation (incomplete)
+10. starknet.js - Library for interacting with StarkNet
+
+## Notable Features
+
+- Integration with Ekubo
+- Generative UI using React Server Components streamable UI
 
 ## Challenges / Missing Features
 
