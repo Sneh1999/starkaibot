@@ -29,16 +29,26 @@ export const config = {
           throw new Error('Token is required')
         }
         const jwtPayload = await validateJWT(token)
-
         if (jwtPayload) {
-          // Transform the JWT payload into your user object
-          const user: User = {
-            id: jwtPayload.sub || '' // Assuming 'sub' is the user ID
+          const verifiedCredentials = jwtPayload['verified_credentials'] as {
+            address: string
+            chain: string
+          }[]
+
+          if (
+            verifiedCredentials.length > 0 &&
+            verifiedCredentials[0].chain === 'starknet'
+          ) {
+            // Transform the JWT payload into your user object
+            const user: User = {
+              id: verifiedCredentials[0].address
+            }
+
+            return user
           }
-          return user
-        } else {
-          return null
         }
+
+        return null
       }
     })
   ],

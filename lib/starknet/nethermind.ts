@@ -1,10 +1,26 @@
-import { RpcProvider, num, transaction } from 'starknet'
+import {
+  BlockIdentifier,
+  RpcProvider,
+  SimulateTransactionResponse,
+  num,
+  transaction
+} from 'starknet'
 
 const NODE_URL = 'https://free-rpc.nethermind.io/sepolia-juno/'
 
 type TransactionSimulationRequest = {
   transactionHash?: string
-  transactionToSimulate?: any
+  transactionToSimulate?: TransactionToSimulate[]
+}
+
+export type TransactionToSimulate = {
+  type: 'INVOKE'
+  version: '0x1'
+  sender_address: string
+  calldata: string[]
+  max_fee: string
+  signature: string[2]
+  nonce: string
 }
 
 export const getTransactionSimulation = async ({
@@ -12,7 +28,7 @@ export const getTransactionSimulation = async ({
   transactionToSimulate
 }: TransactionSimulationRequest) => {
   let transaction: any
-  let blockNumber: any
+  let blockId: 'pending' | 'latest' | { block_number: number }
 
   const provider = new RpcProvider({
     nodeUrl: NODE_URL
@@ -67,20 +83,20 @@ export const getTransactionSimulation = async ({
       console.info("Can't simulate DECLARE txn type: ", transaction)
       throw new Error("Can't simulate DECLARE txn type")
     }
-    blockNumber = transactionReceipt.block_number
+    blockId = {
+      block_number: transactionReceipt.block_number - 1
+    }
   } else {
     transaction = transactionToSimulate
+    blockId = 'latest'
   }
   try {
     const response = await handleRequest('starknet_simulateTransactions', {
       transactions: [transaction],
       simulation_flags: [],
-      block_id: {
-        block_number: blockNumber - 1
-      }
+      block_id: blockId
     })
-    console.log('response', response)
-    return response
+    return response as { result: SimulateTransactionResponse }
   } catch (error) {
     console.error(error)
     throw new Error('Error simulating transaction')

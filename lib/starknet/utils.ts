@@ -8,13 +8,18 @@ export const STARKBOT_TOKEN_CONTRACT_ADDRESS =
   '0x06b530a5c8f3af4a5ba7be66b3a59b6b94aaf5d9794baac75d85fc49d5bf174f'
 
 export async function getFeeBalance(address: string) {
+  return getTokenBalance(STARKBOT_TOKEN_CONTRACT_ADDRESS, address)
+}
+
+export async function getTokenBalance(token: string, address: string) {
   const provider = new RpcProvider({
     nodeUrl: 'https://free-rpc.nethermind.io/sepolia-juno'
   })
 
   const contract = new Contract(
+    // This has ERC-20 in it
     StarkbotABI,
-    STARKBOT_TOKEN_CONTRACT_ADDRESS,
+    token,
     provider
   )
 
@@ -44,13 +49,21 @@ export function getStarkBotTokenApprovalCall({
   amount,
   tokenAddress
 }: ApproveStarkBotArgs) {
-  const call: Call = {
-    contractAddress: tokenAddress,
-    entrypoint: 'approve',
-    calldata: [STARKBOT_TOKEN_CONTRACT_ADDRESS, num.toHex(amount), '0x0']
-  }
+  const provider = new RpcProvider({
+    nodeUrl: 'https://free-rpc.nethermind.io/sepolia-juno'
+  })
 
-  console.log(call)
+  const contract = new Contract(StarkbotABI, tokenAddress, provider)
+
+  const call: Call = contract.populate('approve', [
+    STARKBOT_TOKEN_CONTRACT_ADDRESS,
+    uint256.bnToUint256(amount)
+  ])
+  // const call: Call = {
+  //   contractAddress: tokenAddress,
+  //   entrypoint: 'approve',
+  //   calldata: [STARKBOT_TOKEN_CONTRACT_ADDRESS, uint256.bnToUint256(amount)]
+  // }
 
   return call
 }
@@ -66,7 +79,6 @@ export function getStarkBotSwapCall(quote: ApiQuoteSwap, zeroForOne: boolean) {
     provider
   )
 
-  console.log({ quote })
   const call: Call = contract.populate('swap', [
     {
       pool_key: {
@@ -89,4 +101,22 @@ export function getStarkBotSwapCall(quote: ApiQuoteSwap, zeroForOne: boolean) {
   ])
 
   return call
+}
+
+export function formatUnits(value: bigint, decimals: number) {
+  let display = value.toString()
+
+  const negative = display.startsWith('-')
+  if (negative) display = display.slice(1)
+
+  display = display.padStart(decimals, '0')
+
+  let [integer, fraction] = [
+    display.slice(0, display.length - decimals),
+    display.slice(display.length - decimals)
+  ]
+  fraction = fraction.replace(/(0+)$/, '')
+  return `${negative ? '-' : ''}${integer || '0'}${
+    fraction ? `.${fraction}` : ''
+  }`
 }

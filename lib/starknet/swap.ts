@@ -16,6 +16,7 @@ export interface SwapTokensArgs {
   inputTokenAddress: string
   outputTokenAddress: string
   amount: bigint
+  route: SwapRoute
 }
 
 const SWAP_FEES = BigInt(500) * BigInt(10 ** 18)
@@ -24,7 +25,8 @@ export async function swapTokens({
   wallet,
   inputTokenAddress,
   outputTokenAddress,
-  amount
+  amount,
+  route
 }: SwapTokensArgs) {
   if (!wallet) throw new Error('No wallet provided')
   const starknetConnector = wallet.connector as StarknetWalletConnector
@@ -41,17 +43,10 @@ export async function swapTokens({
   })
   if (!hasFees) throw new Error('Insufficient fees')
 
-  const route = await fetchRoute(inputTokenAddress, outputTokenAddress, amount)
-
   const zeroForOne =
     num.cleanHex(route.route[0].pool_key.token0) ===
     num.cleanHex(inputTokenAddress)
 
-  console.log({
-    inputTokenAddress,
-    outputTokenAddress,
-    route
-  })
   const calls: Call[] = [
     // First call transfers the input token to the starkbot contract
     getStarkBotTokenApprovalCall({ amount, tokenAddress: inputTokenAddress }),
@@ -60,17 +55,19 @@ export async function swapTokens({
     getStarkBotSwapCall(route, zeroForOne)
   ]
 
+  console.log({ calls })
+
   const { transaction_hash: txnHash } = await signer.execute(calls, [
     StarkbotABI
   ])
   return txnHash
 }
 
-async function fetchRoute(
+export async function fetchRoute(
   inputTokenAddress: string,
   outputTokenAddress: string,
   amount: BigInt
-) {
+): Promise<SwapRoute> {
   const quote = await fetch(
     `${EKUBO_API_QUOTE_URL}/${amount}/${inputTokenAddress}/${outputTokenAddress}?maxHops=1`
   )
@@ -80,7 +77,11 @@ async function fetchRoute(
   }
 
   const route = (await quote.json()) as ApiQuoteSwap
-  return route
+  return {
+    ...route,
+    inputTokenAddress,
+    outputTokenAddress
+  }
 }
 
 export interface ApiQuoteSwap {
@@ -97,4 +98,9 @@ export interface ApiQuoteSwap {
     sqrt_ratio_limit: string
     skip_ahead: string
   }[]
+}
+
+export interface SwapRoute extends ApiQuoteSwap {
+  inputTokenAddress: string
+  outputTokenAddress: string
 }

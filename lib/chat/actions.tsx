@@ -3,105 +3,26 @@ import 'server-only'
 import { openai } from '@ai-sdk/openai'
 import {
   createAI,
-  createStreamableUI,
   createStreamableValue,
   getAIState,
   getMutableAIState,
   streamUI
 } from 'ai/rsc'
 
-import {
-  BotCard,
-  BotMessage,
-  Swap,
-  SystemMessage,
-  spinner
-} from '@/components/stocks'
+import { BotCard, BotMessage, Swap } from '@/components/stocks'
 
 import { saveChat } from '@/app/actions'
 import { auth } from '@/auth'
+import { Balance } from '@/components/stocks/balance'
 import { SpinnerMessage, UserMessage } from '@/components/stocks/message'
-import { SwapSkeleton } from '@/components/stocks/swap-skeleton'
+import { Send } from '@/components/stocks/send'
 import { Chat, Message } from '@/lib/types'
-import {
-  formatNumber,
-  nanoid,
-  runAsyncFnWithoutBlocking,
-  sleep
-} from '@/lib/utils'
-import { z } from 'zod'
-import { getToken } from '../starknet/voyager'
+import { nanoid } from '@/lib/utils'
 import { Session } from 'next-auth'
-
-async function confirmPurchase(symbol: string, price: number, amount: number) {
-  'use server'
-
-  const aiState = getMutableAIState<typeof AI>()
-
-  const purchasing = createStreamableUI(
-    <div className="inline-flex items-start gap-1 md:items-center">
-      {spinner}
-      <p className="mb-2">
-        Purchasing {amount} ${symbol}...
-      </p>
-    </div>
-  )
-
-  const systemMessage = createStreamableUI(null)
-
-  runAsyncFnWithoutBlocking(async () => {
-    await sleep(1000)
-
-    purchasing.update(
-      <div className="inline-flex items-start gap-1 md:items-center">
-        {spinner}
-        <p className="mb-2">
-          Purchasing {amount} ${symbol}... working on it...
-        </p>
-      </div>
-    )
-
-    await sleep(1000)
-
-    purchasing.done(
-      <div>
-        <p className="mb-2">
-          You have successfully purchased {amount} ${symbol}. Total cost:{' '}
-          {formatNumber(amount * price)}
-        </p>
-      </div>
-    )
-
-    systemMessage.done(
-      <SystemMessage>
-        You have purchased {amount} shares of {symbol} at ${price}. Total cost ={' '}
-        {formatNumber(amount * price)}.
-      </SystemMessage>
-    )
-
-    aiState.done({
-      ...aiState.get(),
-      messages: [
-        ...aiState.get().messages,
-        {
-          id: nanoid(),
-          role: 'system',
-          content: `[User has purchased ${amount} shares of ${symbol} at ${price}. Total cost = ${
-            amount * price
-          }]`
-        }
-      ]
-    })
-  })
-
-  return {
-    purchasingUI: purchasing.value,
-    newMessage: {
-      id: nanoid(),
-      display: systemMessage.value
-    }
-  }
-}
+import { z } from 'zod'
+import { fetchRoute } from '../starknet/swap'
+import { getTokenBalance } from '../starknet/utils'
+import { getToken } from '../starknet/voyager'
 
 async function submitUserMessage(content: string) {
   'use server'
@@ -111,7 +32,7 @@ async function submitUserMessage(content: string) {
   if (!session) {
     return {
       id: nanoid(),
-      display: <p>Please logged in to continue</p>
+      display: <p>Please log in to continue</p>
     }
   }
   const aiState = getMutableAIState<typeof AI>()
@@ -135,11 +56,15 @@ async function submitUserMessage(content: string) {
     model: openai('gpt-3.5-turbo'),
     initial: <SpinnerMessage />,
     system: `\
-    You are a decentralized finance bot and you can help users to check their balance of a token, transfer tokens or swap tokens step by step.
+    You are a DeFi bot on Starknet and you can help users with activities like cchecking their balance of a token, transferring tokens to others, swapping tokens on DEXes, and understanding past transactions by simulating them.
+    
     If the user requests to swap some token X for token Y and the amount of X to swap, call \`swapTokens\` to swap token to another token.
     If the user requests to send some token X to recipient Y for amount Z, call \`transferToken\` to transfer token to another address.    
     If the user requests to check the balance of a token in a wallet, call \`balanceOf\` to check the balance of a token in a wallet.
+
     Besides that, you can also chat with users and do some calculations if needed.`,
+
+    // If the user requests to simulate a past transaction, call \`simulateTransaction\` with the transaction hash.
     messages: [
       ...aiState.get().messages.map((message: any) => ({
         role: message.role,
@@ -174,17 +99,17 @@ async function submitUserMessage(content: string) {
     tools: {
       swapTokens: {
         description:
-          'Swap one token for another. Use this if the user wants to swap tokens.',
+          'Swap one token for another. Use this if the user wants to exchange a certain amount of one token for another.',
         parameters: z.object({
           tokenFromName: z
             .string()
             .describe(
-              'The symbol/name of the token that will be swapped to convert to another token. e.g. USDC/STRK/ETH.'
+              'The symbol or name of the token that will be swapped to convert to another token. e.g. USDC/STRK/ETH.'
             ),
           tokenToName: z
             .string()
             .describe(
-              'The symbol/name of the token that the tokenFrom will be swapped into. e.g. USDC/STRK/ETH.'
+              'The symbol or name of the token that the tokenFrom will be swapped into. e.g. USDC/STRK/ETH.'
             ),
           amount: z
             .number()
@@ -196,7 +121,7 @@ async function submitUserMessage(content: string) {
         generate: async function* ({ tokenFromName, tokenToName, amount }) {
           yield (
             <BotCard>
-              <SwapSkeleton />
+              <SpinnerMessage />
             </BotCard>
           )
 
@@ -204,6 +129,12 @@ async function submitUserMessage(content: string) {
 
           const tokenFrom = await getToken(tokenFromName)
           const tokenTo = await getToken(tokenToName)
+
+          const route = await fetchRoute(
+            tokenFrom!.address,
+            tokenTo!.address,
+            BigInt(amount * 10 ** tokenFrom!.decimals)
+          )
 
           aiState.done({
             ...aiState.get(),
@@ -229,18 +160,20 @@ async function submitUserMessage(content: string) {
                     type: 'tool-result',
                     toolName: 'swapTokens',
                     toolCallId,
-                    result: { tokenFrom, tokenTo, amount }
+                    result: { tokenFrom, tokenTo, route }
                   }
                 ]
               }
             ]
           })
 
+          if (!tokenFrom || !tokenTo) {
+            return `Could not find token ${tokenFromName} or ${tokenToName}`
+          }
+
           return (
             <BotCard>
-              <p>
-                Swapping {amount} {tokenFrom.address} to {tokenTo.address}...
-              </p>
+              <Swap inputToken={tokenFrom} outputToken={tokenTo} {...route} />
             </BotCard>
           )
         }
@@ -270,7 +203,7 @@ async function submitUserMessage(content: string) {
         generate: async function* ({ tokenName, recipient, amount }) {
           yield (
             <BotCard>
-              <SwapSkeleton />
+              <SpinnerMessage />
             </BotCard>
           )
           const token = await getToken(tokenName)
@@ -308,11 +241,17 @@ async function submitUserMessage(content: string) {
             ]
           })
 
+          if (!token) {
+            return `Could not find token ${token}`
+          }
+
           return (
             <BotCard>
-              <p>
-                Transferring {amount} {token.address} to {recipient}...
-              </p>
+              <Send
+                recipient={recipient}
+                amount={BigInt(amount * 10 ** token.decimals)}
+                token={token}
+              />
             </BotCard>
           )
         }
@@ -330,10 +269,15 @@ async function submitUserMessage(content: string) {
         generate: async function* ({ tokenName }) {
           yield (
             <BotCard>
-              <SwapSkeleton />
+              <SpinnerMessage />
             </BotCard>
           )
+
           const token = await getToken(tokenName)
+          let balance: bigint | null = null
+          if (token) {
+            balance = await getTokenBalance(token?.address, session.user!.id!)
+          }
 
           const toolCallId = nanoid()
 
@@ -361,20 +305,89 @@ async function submitUserMessage(content: string) {
                     type: 'tool-result',
                     toolName: 'balanceOf',
                     toolCallId,
-                    result: { token }
+                    result: {
+                      token,
+                      balance: balance?.toString()
+                    }
                   }
                 ]
               }
             ]
           })
 
+          if (!token) {
+            return `Could not find token ${tokenName}`
+          }
+
           return (
             <BotCard>
-              <p>Balance of {token.address} ...</p>
+              <Balance token={token} balance={balance} />
             </BotCard>
           )
         }
       }
+      // simulateTransaction: {
+      //   description:
+      //     'Simulate a transaction executed in the past on Starknet. Call this function with the provided transaction hash. Extract the transaction hash from the block explorer link if given.',
+      //   parameters: z.object({
+      //     transactionHash: z
+      //       .string()
+      //       .startsWith('0x')
+      //       .describe('The transaction hash')
+      //   }),
+      //   generate: async function* ({ transactionHash }) {
+      //     yield (
+      //       <BotCard>
+      //         <SpinnerMessage />
+      //       </BotCard>
+      //     )
+
+      //     const txnSimulation = await getTransactionSimulation({
+      //       transactionHash
+      //     })
+
+      //     const toolCallId = nanoid()
+
+      //     aiState.done({
+      //       ...aiState.get(),
+      //       messages: [
+      //         ...aiState.get().messages,
+      //         {
+      //           id: nanoid(),
+      //           role: 'assistant',
+      //           content: [
+      //             {
+      //               type: 'tool-call',
+      //               toolName: 'simulateTransaction',
+      //               toolCallId,
+      //               args: { transactionHash }
+      //             }
+      //           ]
+      //         },
+      //         {
+      //           id: nanoid(),
+      //           role: 'tool',
+      //           content: [
+      //             {
+      //               type: 'tool-result',
+      //               toolName: 'simulateTransaction',
+      //               toolCallId,
+      //               result: {
+      //                 txnSimulation
+      //               }
+      //             }
+      //           ]
+      //         }
+      //       ]
+      //     })
+
+      //     return (
+      //       <BotCard>
+      //         <Simulation txnSimulation={txnSimulation} />
+      //       </BotCard>
+      //     )
+      //   }
+      // }
     }
   })
 
@@ -396,8 +409,7 @@ export type UIState = {
 
 export const AI = createAI<AIState, UIState>({
   actions: {
-    submitUserMessage,
-    confirmPurchase
+    submitUserMessage
   },
   initialUIState: [],
   initialAIState: { chatId: nanoid(), messages: [] },
@@ -410,6 +422,7 @@ export const AI = createAI<AIState, UIState>({
       const aiState = getAIState()
 
       if (aiState) {
+        // @ts-expect-error
         const uiState = getUIStateFromAIState(aiState)
         return uiState
       }
@@ -457,12 +470,61 @@ export const getUIStateFromAIState = (aiState: Chat) => {
       display:
         message.role === 'tool' ? (
           message.content.map(tool => {
-            return tool.toolName === 'swapTokens' ? (
-              <BotCard>
-                {/* @ts-expect-error */}
-                <Swap props={tool.result} />
-              </BotCard>
-            ) : null
+            if (tool.toolName === 'swapTokens') {
+              return (
+                <BotCard key={tool.toolCallId}>
+                  <Swap
+                    // @ts-expect-error
+                    inputToken={tool.result.tokenFrom}
+                    // @ts-expect-error
+                    outputToken={tool.result.tokenTo}
+                    // @ts-expect-error
+                    {...tool.result.route}
+                  />
+                </BotCard>
+              )
+            }
+
+            if (tool.toolName === 'transferToken') {
+              return (
+                <BotCard key={tool.toolCallId}>
+                  <Send
+                    // @ts-expect-error
+                    recipient={tool.result.recipient}
+                    // @ts-expect-error
+                    amount={tool.result.amount}
+                    // @ts-expect-error
+                    token={tool.result.token}
+                  />
+                </BotCard>
+              )
+            }
+
+            if (tool.toolName === 'balanceOf') {
+              return (
+                <BotCard key={tool.toolCallId}>
+                  <Balance
+                    // @ts-expect-error
+                    token={tool.result.token}
+                    balance={
+                      // @ts-expect-error
+                      !tool.result.balance ? null : BigInt(tool.result.balance)
+                    }
+                  />
+                </BotCard>
+              )
+            }
+
+            // if (tool.toolName === 'simulateTransaction') {
+            //   return (
+            //     <BotCard key={tool.toolCallId}>
+            //       {/* @ts-expect-error */}
+            //       <Simulation txnSimulation={tool.result.txnSimulation} />
+            //     </BotCard>
+            //   )
+            // }
+
+            return null
           })
         ) : message.role === 'user' ? (
           <UserMessage>{message.content as string}</UserMessage>

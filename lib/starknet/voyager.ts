@@ -1,3 +1,10 @@
+export interface TokenInfo {
+  address: string
+  name: string
+  symbol: string
+  decimals: number
+}
+
 export const getTokens = async () => {
   try {
     const response = await fetch(
@@ -10,8 +17,9 @@ export const getTokens = async () => {
         }
       }
     )
+
     const data = await response.json()
-    return data.items
+    return data.items as TokenInfo[]
   } catch (e) {
     console.log(e)
     return []
