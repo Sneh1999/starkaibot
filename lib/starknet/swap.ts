@@ -51,7 +51,6 @@ export async function swapTokens({
     // First call transfers the input token to the starkbot contract
     getStarkBotTokenApprovalCall({ amount, tokenAddress: inputTokenAddress }),
     // Then calls the swap function on the starkbot contract
-    // NOTE: We only support single-hop swaps for now
     getStarkBotSwapCall(route, zeroForOne)
   ]
 
