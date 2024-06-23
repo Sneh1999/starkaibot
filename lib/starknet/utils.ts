@@ -3,9 +3,9 @@ import StarkbotABI from './abis/starkbot-token.json'
 import { ApiQuoteSwap } from './swap'
 
 const STARKBOT_TOKEN_CLASS_HASH =
-  '0x027a3e8664d9e5989e7a853e15399dc69987d029540f8d33a5e2d37643fb7744'
+  '0x027ce6b787dc0ae57a361f21d44dddadbb91c360e7f7e7497112fa6e1602e3e8'
 export const STARKBOT_TOKEN_CONTRACT_ADDRESS =
-  '0x06b530a5c8f3af4a5ba7be66b3a59b6b94aaf5d9794baac75d85fc49d5bf174f'
+  '0x05ab9c6b81f1d1a7aac290940584a9d26c49ac1014097ef3bf11710445ebf285'
 
 export async function getFeeBalance(address: string) {
   return getTokenBalance(STARKBOT_TOKEN_CONTRACT_ADDRESS, address)

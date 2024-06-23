@@ -141,7 +141,6 @@ mod StarkBot {
     // Helper function used for local testing to mint an arbitrary amount of tokens
     #[external(v0)]
     fn mint(ref self: ContractState, to: ContractAddress, amount: u256) {
-        self.ownable.assert_only_owner();
         self.erc20._mint(to, amount);
     }
 
